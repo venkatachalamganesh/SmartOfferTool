@@ -6,73 +6,91 @@ export async function POST(request: NextRequest) {
   try {
     const { text } = await request.json()
 
-    if (!text) {
-      return NextResponse.json({ success: false, error: "No text provided" }, { status: 400 })
+    if (!text || typeof text !== "string") {
+      return NextResponse.json({ success: false, error: "Invalid input text" }, { status: 400 })
     }
 
-    console.log("🤖 === OPENAI API ROUTE ===")
-    console.log("🤖 Input text:", text.substring(0, 200) + "...")
+    console.log("🤖 === OPENAI EXTRACTION API ===")
+    console.log("🤖 Input text:", text.substring(0, 100) + "...")
 
-    const prompt = `Extract offer details from this text and return ONLY a valid JSON object with these exact fields:
+    const prompt = `Extract offer details from the following text and return ONLY a valid JSON object with these exact fields:
 
 {
-  "offerName": "Brand/Product name from the text",
-  "offerHeadline": "Create a catchy marketing headline (max 60 chars)",
-  "offerBodyline": "Create compelling body text (max 120 chars)", 
-  "earnAmount": "Just the number (e.g., 15, 10, 25)",
-  "earnType": "percentage, fixed, or points",
-  "earnDisplayText": "User-friendly display (e.g., 15% off, $10 back)",
-  "offerStartDate": "YYYY-MM-DD format or empty string",
-  "offerEndDate": "YYYY-MM-DD format or empty string", 
-  "simplePointExpiry": "Human readable (e.g., 30 days, 60 days)",
+  "offerName": "brand or product name",
+  "offerHeadline": "catchy marketing headline (generate if not present)",
+  "offerBodyline": "engaging description (generate if not present)", 
+  "earnAmount": "numeric value only",
+  "earnType": "points, cashback, percentage, or fixed",
+  "earnDisplayText": "how reward is displayed to user",
+  "offerStartDate": "YYYY-MM-DD format",
+  "offerEndDate": "YYYY-MM-DD format", 
+  "simplePointExpiry": "expiry description",
   "offerRules": {
-    "Member Segment": "extracted segment (e.g., segment_house_owner)",
-    "Member Tier": "extracted tier (e.g., VIP Gold)",
-    "Eligible Products": "products mentioned",
-    "Additional Rules": "any other conditions"
+    "rule_name": "rule_value"
   }
 }
 
-Text to extract from: "${text}"
+Text to extract from:
+${text}
 
-Return ONLY the JSON object, no markdown, no explanations, no code blocks.`
+Return ONLY the JSON object, no other text or formatting.`
 
     const result = await generateText({
       model: openai("gpt-4o"),
       prompt,
-      temperature: 0.3,
       maxTokens: 1000,
+      temperature: 0.3,
     })
 
     console.log("🤖 OpenAI raw response:", result.text)
 
-    // Clean the response - remove any markdown code blocks
-    let cleanedResponse = result.text.trim()
+    // Clean the response
+    let jsonText = result.text.trim()
 
     // Remove markdown code blocks if present
-    if (cleanedResponse.startsWith("```json")) {
-      cleanedResponse = cleanedResponse.replace(/```json\s*/, "").replace(/\s*```$/, "")
-    } else if (cleanedResponse.startsWith("```")) {
-      cleanedResponse = cleanedResponse.replace(/```\s*/, "").replace(/\s*```$/, "")
-    }
+    jsonText = jsonText.replace(/```json\s*/, "").replace(/```\s*$/, "")
+    jsonText = jsonText.replace(/```\s*/, "")
 
-    console.log("🤖 Cleaned response:", cleanedResponse)
-
-    // Parse the JSON
+    // Try to parse JSON
     let extractedData
     try {
-      extractedData = JSON.parse(cleanedResponse)
+      extractedData = JSON.parse(jsonText)
     } catch (parseError) {
       console.error("🤖 JSON parse error:", parseError)
-      console.error("🤖 Failed to parse:", cleanedResponse)
-      throw new Error("Invalid JSON response from OpenAI")
+      console.error("🤖 Raw text:", jsonText)
+
+      // Try to extract JSON from the text
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          extractedData = JSON.parse(jsonMatch[0])
+        } catch (secondParseError) {
+          throw new Error("Could not parse OpenAI response as JSON")
+        }
+      } else {
+        throw new Error("No JSON found in OpenAI response")
+      }
     }
 
-    console.log("🤖 ✅ Successfully extracted data:", extractedData)
+    // Validate and clean the extracted data
+    const cleanedData = {
+      offerName: extractedData.offerName || "",
+      offerHeadline: extractedData.offerHeadline || "",
+      offerBodyline: extractedData.offerBodyline || "",
+      earnAmount: extractedData.earnAmount || "",
+      earnType: extractedData.earnType || "",
+      earnDisplayText: extractedData.earnDisplayText || "",
+      offerStartDate: extractedData.offerStartDate || "",
+      offerEndDate: extractedData.offerEndDate || "",
+      simplePointExpiry: extractedData.simplePointExpiry || "",
+      offerRules: extractedData.offerRules || {},
+    }
+
+    console.log("🤖 ✅ Cleaned extracted data:", cleanedData)
 
     return NextResponse.json({
       success: true,
-      data: extractedData,
+      data: cleanedData,
     })
   } catch (error) {
     console.error("🤖 ❌ OpenAI extraction error:", error)
