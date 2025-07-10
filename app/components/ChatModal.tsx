@@ -125,7 +125,7 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
   const [inputText, setInputText] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [chatHistory, setChatHistory] = useState<Array<{ type: "user" | "assistant"; message: string }>>([])
-  const [extractionMethod, setExtractionMethod] = useState<"openai" | "regex">("openai") // DEFAULT TO OPENAI
+  const [extractionMethod, setExtractionMethod] = useState<"openai" | "regex">("openai")
   const [openaiStatus, setOpenaiStatus] = useState<"checking" | "ready" | "error">("checking")
   const [statusDetails, setStatusDetails] = useState<string>("")
   const [lastExtractionMethod, setLastExtractionMethod] = useState<string>("")
@@ -165,21 +165,21 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
         } else {
           setOpenaiStatus("error")
           setStatusDetails(testData.error || "OpenAI test failed")
-          setExtractionMethod("regex") // Fallback to regex
+          setExtractionMethod("regex")
           console.log("🔍 ❌ OpenAI API test failed:", testData.error)
         }
       } else {
         const errorData = await testResponse.json().catch(() => ({}))
         setOpenaiStatus("error")
         setStatusDetails(errorData.error || `HTTP ${testResponse.status}`)
-        setExtractionMethod("regex") // Fallback to regex
+        setExtractionMethod("regex")
         console.log("🔍 ❌ OpenAI API status check failed")
       }
     } catch (error) {
       console.error("🔍 ❌ OpenAI status check failed with exception:", error)
       setOpenaiStatus("error")
       setStatusDetails(`Connection error: ${error.message}`)
-      setExtractionMethod("regex") // Fallback to regex
+      setExtractionMethod("regex")
     }
   }
 
@@ -394,7 +394,6 @@ ${rulesText}
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-6">
-          {/* Extraction Method Selector */}
           <div className="mb-4">
             <label className="text-sm font-medium text-gray-700 mb-2 block">Extraction Method:</label>
             <Select value={extractionMethod} onValueChange={(value: any) => setExtractionMethod(value)}>
@@ -418,7 +417,6 @@ ${rulesText}
             </Select>
           </div>
 
-          {/* Image Generation Info */}
           <div className="mb-4">
             <Alert className="border-blue-200 bg-blue-50">
               <ImageIcon className="h-4 w-4" />
@@ -432,7 +430,6 @@ ${rulesText}
             </Alert>
           </div>
 
-          {/* Test Buttons */}
           <div className="mb-4 space-y-2">
             <Button
               onClick={() =>
@@ -459,7 +456,6 @@ ${rulesText}
             </Button>
           </div>
 
-          {/* OpenAI Status */}
           <div className="mb-4">
             {openaiStatus === "checking" && (
               <Alert className="border-blue-200 bg-blue-50">
@@ -512,7 +508,6 @@ ${rulesText}
             )}
           </div>
 
-          {/* Chat History */}
           <div className="flex-1 mb-4 space-y-4 overflow-y-auto max-h-60">
             {chatHistory.length === 0 && (
               <div className="text-center text-gray-500 py-8">
@@ -578,7 +573,6 @@ ${rulesText}
             )}
           </div>
 
-          {/* Input Area */}
           <div className="flex-shrink-0 space-y-4">
             <Textarea
               value={inputText}
@@ -623,3 +617,6 @@ ${rulesText}
     </div>
   )
 }
+
+// Named export for compatibility
+export { ChatModal }
