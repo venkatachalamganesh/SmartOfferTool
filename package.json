@@ -1,5 +1,5 @@
 {
-  "name": "my-v0-project",
+  "name": "smart-offer-framework",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -59,7 +59,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
-    "zod": "latest"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22",
