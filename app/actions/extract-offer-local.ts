@@ -1,159 +1,184 @@
 "use server"
 
-export async function extractOfferWithRegex(text: string) {
-  console.log("⚡ === ENHANCED REGEX EXTRACTION STARTING ===")
-  console.log("⚡ Input text:", text)
+interface OfferData {
+  offerName: string
+  offerHeadline: string
+  offerBodyline: string
+  offerStartDate: string
+  offerEndDate: string
+  offerRules: Record<string, string>
+  earnType: string
+  earnAmount: string
+  earnDisplayText: string
+  simplePointExpiry: string
+  offerDescription: string
+}
 
-  const extractedData: any = {}
-  extractedData.offerDescription = text.trim()
+export async function extractOfferWithRegex(
+  text: string,
+): Promise<{ success: boolean; data?: OfferData; error?: string }> {
+  console.log("⚡ === REGEX EXTRACTION STARTING ===")
+  console.log("⚡ Input text:", text.substring(0, 200) + "...")
 
-  // Extract offer name with better brand detection
-  if (text.toLowerCase().includes("kenmore")) {
-    extractedData.offerName = "Kenmore Appliance"
-  } else if (text.toLowerCase().includes("levis") || text.toLowerCase().includes("levi's")) {
-    extractedData.offerName = "Levi's Jeans"
-  } else {
-    // Generic extraction
-    const offerNameMatch = text.match(/(\w+(?:\s+\w+)*)\s+(?:offer|sale|deal|promotion)/i)
-    if (offerNameMatch) {
-      extractedData.offerName = offerNameMatch[1].trim().substring(0, 30)
+  try {
+    // Extract offer name (brand/product)
+    let offerName = ""
+    const brandMatches = text.match(/\b(Kenmore|Levi'?s?|levis?|Nike|Apple|Samsung|LG|Sony)\b/i)
+    if (brandMatches) {
+      offerName = brandMatches[1]
+      if (text.toLowerCase().includes("appliance")) {
+        offerName += " Appliances"
+      } else if (text.toLowerCase().includes("jeans")) {
+        offerName += " Jeans"
+      }
     }
-  }
 
-  // Extract earn amount and type
-  const earnMatch = text.match(/(\d+)%\s+back/i)
-  if (earnMatch) {
-    extractedData.earnAmount = (Number.parseFloat(earnMatch[1]) * 10).toString() // Convert to points per dollar
-    extractedData.earnType = "points"
-    extractedData.earnDisplayText = `${earnMatch[1]}% back in points`
-  }
+    // Generate headlines based on content
+    let offerHeadline = ""
+    let offerBodyline = ""
 
-  // Extract dates - handle both patterns
-  const dateRangeMatch = text.match(/between\s+(\w+)\s+(\d+)[a-z]*\s+and\s+(\w+)\s+(\d+)/i)
-  const startDateMatch = text.match(/starting\s+(\w+)\s+(\d+)/i)
-
-  if (dateRangeMatch) {
-    // Handle "between July 15th and July 22nd"
-    const monthMap: { [key: string]: string } = { july: "07", jul: "07" }
-    const startMonth = monthMap[dateRangeMatch[1].toLowerCase()]
-    const endMonth = monthMap[dateRangeMatch[3].toLowerCase()]
-
-    if (startMonth && endMonth) {
-      extractedData.offerStartDate = `2025-${startMonth}-${dateRangeMatch[2].padStart(2, "0")}`
-      extractedData.offerEndDate = `2025-${endMonth}-${dateRangeMatch[4].padStart(2, "0")}`
+    if (text.toLowerCase().includes("kenmore") || text.toLowerCase().includes("appliance")) {
+      offerHeadline = "Appliance Deals & Rewards!"
+      offerBodyline = "Save on Kenmore appliances and earn rewards!"
+    } else if (text.toLowerCase().includes("levi") || text.toLowerCase().includes("jeans")) {
+      offerHeadline = "Premium Denim Savings!"
+      offerBodyline = "Get premium Levi's jeans and earn points!"
+    } else if (text.toLowerCase().includes("tech") || text.toLowerCase().includes("electronics")) {
+      offerHeadline = "Tech Rewards & Cashback!"
+      offerBodyline = "Upgrade your tech and earn rewards today!"
+    } else {
+      offerHeadline = "Special Offer & Rewards!"
+      offerBodyline = "Shop now and earn amazing rewards!"
     }
-  } else if (startDateMatch) {
-    // Handle "starting July 15th"
-    const monthMap: { [key: string]: string } = { july: "07", jul: "07" }
-    const startMonth = monthMap[startDateMatch[1].toLowerCase()]
 
-    if (startMonth) {
-      extractedData.offerStartDate = `2025-${startMonth}-${startDateMatch[2].padStart(2, "0")}`
+    // Extract dates
+    let offerStartDate = ""
+    let offerEndDate = ""
+
+    // Pattern: "between July 15th and July 22nd"
+    const betweenMatch = text.match(/between\s+(\w+\s+\d+(?:st|nd|rd|th)?)\s+and\s+(\w+\s+\d+(?:st|nd|rd|th)?)/i)
+    if (betweenMatch) {
+      offerStartDate = convertToISODate(betweenMatch[1])
+      offerEndDate = convertToISODate(betweenMatch[2])
+    } else {
+      // Pattern: "from July 15th" or "starting July 15th"
+      const startMatch = text.match(/(?:from|starting)\s+(\w+\s+\d+(?:st|nd|rd|th)?)/i)
+      if (startMatch) {
+        offerStartDate = convertToISODate(startMatch[1])
+      }
     }
-  }
 
-  // Extract expiry
-  const expiryMatch = text.match(/next\s+(\d+)\s+days/i)
-  if (expiryMatch) {
-    extractedData.simplePointExpiry = `Points expire ${expiryMatch[1]} days after earning date`
-  }
+    // Extract earn information
+    let earnAmount = ""
+    let earnType = ""
+    let earnDisplayText = ""
 
-  // ENHANCED RULES EXTRACTION WITH BETTER SEGMENT DETECTION
-  const rules: { [key: string]: string } = {}
-
-  console.log("⚡ === ENHANCED RULES EXTRACTION ===")
-
-  // Pattern 1: Member Tier as VIP Gold
-  console.log("⚡ Testing for Member Tier...")
-  const tierMatch = text.match(/Member\s+Tier\s+as\s+([^.]+)/i)
-  if (tierMatch) {
-    rules["Membership Level Required"] = tierMatch[1].trim()
-    console.log("⚡ ✅ Found Member Tier:", tierMatch[1].trim())
-  }
-
-  // Pattern 2: Enhanced segment detection - multiple patterns
-  console.log("⚡ Testing for member segments...")
-
-  // Pattern 2a: member segment_XXXXX (direct underscore format)
-  const segmentDirectMatch = text.match(/member\s+segment_([a-zA-Z_0-9]+)/i)
-  if (segmentDirectMatch) {
-    const segmentValue = `segment_${segmentDirectMatch[1]}`
-    rules["Customer Segment"] = segmentValue
-    console.log("⚡ ✅ Found Segment (direct):", segmentValue)
-  }
-
-  // Pattern 2b: member segment as segment_XXXXX or segment__XXXXX
-  if (!rules["Customer Segment"]) {
-    const segmentAsMatch = text.match(/member\s+segment\s+as\s+(segment_+[a-zA-Z_0-9]+)/i)
-    if (segmentAsMatch) {
-      rules["Customer Segment"] = segmentAsMatch[1]
-      console.log("⚡ ✅ Found Segment (as format):", segmentAsMatch[1])
+    // Pattern: "15% back in points"
+    const percentageMatch = text.match(/(\d+(?:\.\d+)?)\s*%\s*back\s+in\s+points/i)
+    if (percentageMatch) {
+      const percentage = Number.parseFloat(percentageMatch[1])
+      earnAmount = (percentage * 10).toString() // 15% → 150 points per dollar
+      earnType = "points"
+      earnDisplayText = `${percentage}% back in points`
     }
-  }
 
-  // Pattern 2c: Flexible segment pattern for any format
-  if (!rules["Customer Segment"]) {
-    const flexibleSegmentMatch = text.match(/segment[_\s]+(Age_\d+_\d+|house_owner|[a-zA-Z_0-9]+)/i)
-    if (flexibleSegmentMatch) {
-      const segmentValue = flexibleSegmentMatch[1].startsWith("segment_")
-        ? flexibleSegmentMatch[1]
-        : `segment_${flexibleSegmentMatch[1]}`
-      rules["Customer Segment"] = segmentValue
-      console.log("⚡ ✅ Found Segment (flexible):", segmentValue)
+    // Pattern: "$50 in points"
+    const dollarMatch = text.match(/\$(\d+(?:\.\d+)?)\s+in\s+points/i)
+    if (dollarMatch) {
+      const dollars = Number.parseFloat(dollarMatch[1])
+      earnAmount = (dollars * 1000).toString() // $50 → 50000 points
+      earnType = "points"
+      earnDisplayText = `$${dollars} in points`
     }
-  }
 
-  // Pattern 3: Product restrictions
-  console.log("⚡ Testing for product restrictions...")
-  const productMatch = text.match(/(?:applicable\s+)?only\s+on\s+([^.]+)/i)
-  if (productMatch) {
-    rules["Eligible Products"] = productMatch[1].trim()
-    console.log("⚡ ✅ Found Products:", productMatch[1].trim())
-  }
+    // Pattern: "15% cashback"
+    const cashbackMatch = text.match(/(\d+(?:\.\d+)?)\s*%\s*cashback/i)
+    if (cashbackMatch) {
+      const percentage = Number.parseFloat(cashbackMatch[1])
+      earnAmount = percentage.toString()
+      earnType = "cashback"
+      earnDisplayText = `${percentage}% cashback`
+    }
 
-  // Additional specific pattern tests for debugging
-  console.log("⚡ === SPECIFIC PATTERN DEBUGGING ===")
+    // Extract point expiry
+    let simplePointExpiry = ""
+    const expiryMatch = text.match(/available for (?:the )?next (\d+) days/i)
+    if (expiryMatch) {
+      simplePointExpiry = `Points expire ${expiryMatch[1]} days after earning date`
+    }
 
-  // Test for Age segment specifically
-  if (text.includes("segment_Age_")) {
+    // Extract rules
+    const offerRules: Record<string, string> = {}
+
+    // Member Tier
+    const tierMatch = text.match(/Member Tier as ([^.]+)/i)
+    if (tierMatch) {
+      offerRules["Membership Level Required"] = tierMatch[1].trim()
+    }
+
+    // Customer Segment - segment_house_owner
+    if (text.includes("segment_house_owner")) {
+      offerRules["Customer Segment"] = "segment_house_owner"
+    }
+
+    // Customer Segment - segment_Age_XX_XX
     const ageSegmentMatch = text.match(/segment_(Age_\d+_\d+)/i)
-    if (ageSegmentMatch && !rules["Customer Segment"]) {
-      rules["Customer Segment"] = `segment_${ageSegmentMatch[1]}`
-      console.log("⚡ ✅ Found Age Segment (specific):", `segment_${ageSegmentMatch[1]}`)
+    if (ageSegmentMatch) {
+      offerRules["Customer Segment"] = `segment_${ageSegmentMatch[1]}`
+    }
+
+    // Eligible Products
+    const productMatch = text.match(/(?:applicable )?only on ([^.]+)/i)
+    if (productMatch) {
+      offerRules["Eligible Products"] = productMatch[1].trim()
+    }
+
+    const extractedData: OfferData = {
+      offerName,
+      offerHeadline,
+      offerBodyline,
+      offerStartDate,
+      offerEndDate,
+      offerRules,
+      earnType,
+      earnAmount,
+      earnDisplayText,
+      simplePointExpiry,
+      offerDescription: text.trim(),
+    }
+
+    console.log("⚡ ✅ Regex extraction successful")
+    console.log("⚡ Extracted data:", extractedData)
+    console.log("⚡ Rules count:", Object.keys(extractedData.offerRules).length)
+
+    return {
+      success: true,
+      data: extractedData,
+    }
+  } catch (error) {
+    console.error("⚡ ❌ Regex extraction error:", error)
+    return {
+      success: false,
+      error: `Regex extraction failed: ${error.message}`,
     }
   }
+}
 
-  // Test for house_owner segment specifically
-  if (text.includes("segment_house_owner")) {
-    if (!rules["Customer Segment"]) {
-      rules["Customer Segment"] = "segment_house_owner"
-      console.log("⚡ ✅ Found House Owner Segment (specific):", "segment_house_owner")
+function convertToISODate(dateStr: string): string {
+  try {
+    // Remove ordinal suffixes (st, nd, rd, th)
+    const cleanDate = dateStr.replace(/(\d+)(?:st|nd|rd|th)/, "$1")
+
+    // Parse the date and assume current year if not specified
+    const date = new Date(`${cleanDate} 2025`)
+
+    if (isNaN(date.getTime())) {
+      return ""
     }
-  }
 
-  extractedData.offerRules = rules
-
-  // Generate headlines based on brand
-  if (text.toLowerCase().includes("kenmore")) {
-    extractedData.offerHeadline = "Appliance Deal!"
-    extractedData.offerBodyline = "Save on Kenmore appliances and earn rewards!"
-  } else if (text.toLowerCase().includes("levis") || text.toLowerCase().includes("levi's")) {
-    extractedData.offerHeadline = "Denim Savings!"
-    extractedData.offerBodyline = "Get premium Levi's jeans and earn points!"
-  } else {
-    extractedData.offerHeadline = "Special Offer!"
-    extractedData.offerBodyline = "Save big and earn rewards!"
-  }
-
-  console.log("⚡ === FINAL RESULTS ===")
-  console.log("⚡ Rules found:", Object.keys(rules).length)
-  console.log("⚡ Rules object:", rules)
-  console.log("⚡ Customer Segment:", rules["Customer Segment"])
-  console.log("⚡ Member Tier:", rules["Membership Level Required"])
-  console.log("⚡ Products:", rules["Eligible Products"])
-
-  return {
-    success: true,
-    data: extractedData,
+    return date.toISOString().split("T")[0] // Return YYYY-MM-DD format
+  } catch (error) {
+    console.error("Date conversion error:", error)
+    return ""
   }
 }
