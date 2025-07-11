@@ -22,6 +22,12 @@ Any changes you make to your deployed app will be automatically pushed to this r
 - **Auto-Close Assistant**: Modal automatically closes after successful data extraction
 - **Real-time Processing**: Live feedback during extraction process
 
+### 🎯 Smart Reward Calculation
+- **Unified Points System**: Cashback automatically converted to points (25% cashback = 250 points per dollar)
+- **Mixed Offer Validation**: Prevents invalid instant discount + points combinations
+- **Consistent Scaling**: Percentage rewards × 10, fixed amounts × 1000 for precise calculations
+- **Reward Type Priority**: Points and cashback take precedence over instant discounts
+
 ### 🎨 Smart Canvas Image Generation
 - **Brand-Specific Themes**: Automatic theme detection for major brands (Kenmore, Levi's, Nike, etc.)
 - **Dynamic Image Creation**: Canvas-based thumbnail generation with brand colors
@@ -145,10 +151,11 @@ smart-offer-framework/
 
 ### 1. Offer Extraction Workflow
 1. **Input**: User provides offer description via AI Assistant
-2. **Processing**: OpenAI extracts structured data or regex fallback
-3. **Generation**: Smart Canvas creates brand-specific thumbnail
-4. **Population**: Form fields automatically filled with extracted data
-5. **Export**: JSON output available for download
+2. **Processing**: OpenAI extracts structured data with smart reward calculation
+3. **Validation**: Mixed offers validated (instant discounts ignored if points present)
+4. **Generation**: Smart Canvas creates brand-specific thumbnail
+5. **Population**: Form fields automatically filled with corrected extraction data
+6. **Export**: Validated JSON output available for download
 
 ### 2. Form Management
 - **Dynamic Fields**: Add/remove offer rules on demand
@@ -264,16 +271,17 @@ const THEMES = {
 ## 🧪 Testing & Quality Assurance
 
 ### Built-in Test Prompts
-The application includes comprehensive test cases:
-- **Kenmore Appliances**: Complex appliance offer with segments
-- **Levi's Jeans**: Fashion offer with age-based targeting
-- **Electronics Sale**: Multi-category technology promotion
-- **Fashion Week**: Designer clothing with premium tiers
+The application includes comprehensive test cases with corrected extraction logic:
+- **Kenmore Appliances**: "Get 15% back in points on Kenmore appliances for members aged 25-65 in zipcode 12345. Offer valid from 2024-01-15 to 2024-02-15."
+- **Levi's Jeans**: "Earn 25% cashback on Levi's jeans for customers aged 18-45. Valid from 2024-03-01 to 2024-03-31."
+- **Electronics Sale**: "Earn 200 points per dollar on electronics for premium members. Valid from 2024-02-01 to 2024-02-28."
+- **Fashion Week**: "Get $50 back in points on designer clothing for VIP members aged 21-50. Valid from 2024-04-01 to 2024-04-30."
 
-### Error Handling
-- **Graceful Degradation**: Regex fallback when AI unavailable
-- **User Feedback**: Clear error messages and recovery options
-- **Validation**: Form validation prevents invalid submissions
+### Extraction Logic Improvements
+- **Cashback = Points**: 25% cashback automatically converts to 250 points per dollar
+- **Mixed Offers**: Invalid instant discount + points combinations now extract only the points reward
+- **Consistent Calculations**: All percentage rewards multiply by 10, fixed amounts by 1000
+- **Smart Validation**: Prevents conflicting reward types in single offers
 
 ## 🚀 Deployment
 
