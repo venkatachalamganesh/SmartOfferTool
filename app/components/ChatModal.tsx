@@ -43,29 +43,29 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
   const [isClosing, setIsClosing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Test prompts
+  // Updated test prompts
   const testPrompts = [
     {
       id: "kenmore",
-      title: "Kenmore Appliances",
+      title: "Kenmore 15% Back",
       prompt:
         "Kenmore appliance offer buy Kenmore appliance between July 15th and July 22nd and get 15% back in points available for the next 30 days. Generate a catchy headline, body line as well as an image. Offer conditions is for member segment_house_owner and Member Tier as VIP Gold. offer applicable only on Washer and Dryers",
     },
     {
-      id: "levis",
-      title: "Levi's Jeans",
+      id: "kenmore-dollar",
+      title: "Kenmore $50 Back",
       prompt:
-        "levis offer buy levis jeans between July 15th and July 22nd and get 10% back in points available for the next 30 days. Generate a catchy headline, body line as well as an image. Offer conditions is for member segment_Age_20_30 and Member Tier as VIP Gold",
+        "Kenmore appliance offer buy Kenmore appliance between July 15th and July 22nd and get $50 back in points available for the next 30 days. Generate a catchy headline, body line as well as an image. Offer conditions is for member segment_house_owner and Member Tier as VIP Gold. offer applicable only on Washer and Dryers",
     },
     {
       id: "electronics",
-      title: "Electronics Sale",
+      title: "Electronics Points Only",
       prompt:
-        "Summer electronics sale - get 20% off all electronics from August 1st to August 31st. Earn 200 points per dollar spent. Points expire after 60 days. Available for premium members only. Includes smartphones, laptops, and tablets.",
+        "Summer electronics sale - earn 200 points per dollar spent from August 1st to August 31st. Points expire after 60 days. Available for premium members only. Includes smartphones, laptops, and tablets.",
     },
     {
       id: "fashion",
-      title: "Fashion Week",
+      title: "Fashion Cashback",
       prompt:
         "Fashion week special - 25% cashback on designer clothing from September 1st to September 15th. Minimum purchase $150. Available for segment_fashion_lovers and VIP Platinum members. Includes dresses, shoes, and accessories.",
     },
@@ -164,208 +164,19 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
     }
   }
 
-  const extractWithRegex = (text: string) => {
+  const extractWithRegex = async (text: string) => {
     console.log("🔍 === REGEX EXTRACTION ===")
     console.log("🔍 Input:", text.substring(0, 100) + "...")
 
-    const extractedData: any = {
-      offerName: "",
-      offerHeadline: "",
-      offerBodyline: "",
-      earnAmount: "",
-      earnType: "",
-      earnDisplayText: "",
-      offerStartDate: "",
-      offerEndDate: "",
-      simplePointExpiry: "",
-      offerRules: {},
+    // Import the server action
+    const { extractOfferWithRegex } = await import("../actions/extract-offer-local")
+    const result = await extractOfferWithRegex(text)
+
+    if (!result.success) {
+      throw new Error(result.error || "Regex extraction failed")
     }
 
-    // Extract brand/product name
-    const brandMatches = [
-      /(?:buy\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:appliance|jeans|electronics|clothing|products?)/i,
-      /([A-Z][a-z]+(?:'s)?)\s+(?:offer|sale|deal)/i,
-      /(Kenmore|Levi's?|Samsung|Apple|Nike|Adidas)/i,
-    ]
-
-    for (const pattern of brandMatches) {
-      const match = text.match(pattern)
-      if (match) {
-        extractedData.offerName = match[1].trim()
-        break
-      }
-    }
-
-    // Generate headlines based on content
-    if (text.toLowerCase().includes("kenmore")) {
-      extractedData.offerHeadline = "Appliance Deals & Rewards!"
-      extractedData.offerBodyline = "Save on Kenmore appliances and earn rewards!"
-    } else if (text.toLowerCase().includes("levi")) {
-      extractedData.offerHeadline = "Denim Days Special!"
-      extractedData.offerBodyline = "Get premium Levi's jeans with rewards!"
-    } else if (text.toLowerCase().includes("electronics")) {
-      extractedData.offerHeadline = "Tech Savings Event!"
-      extractedData.offerBodyline = "Upgrade your electronics and earn big!"
-    } else if (text.toLowerCase().includes("fashion")) {
-      extractedData.offerHeadline = "Fashion Week Exclusive!"
-      extractedData.offerBodyline = "Designer fashion deals with cashback!"
-    } else {
-      extractedData.offerHeadline = "Special Offer Alert!"
-      extractedData.offerBodyline = "Don't miss out on amazing savings!"
-    }
-
-    // Extract percentage rewards
-    const percentageMatch = text.match(/(\d+(?:\.\d+)?)\s*%\s*(?:back\s+in\s+points|off|cashback)/i)
-    if (percentageMatch) {
-      const percentage = Number.parseFloat(percentageMatch[1])
-      extractedData.earnAmount = percentage.toString()
-
-      if (text.toLowerCase().includes("back in points")) {
-        extractedData.earnType = "points"
-        extractedData.earnDisplayText = `${percentage}% back in points`
-      } else if (text.toLowerCase().includes("cashback")) {
-        extractedData.earnType = "cashback"
-        extractedData.earnDisplayText = `${percentage}% cashback`
-      } else {
-        extractedData.earnType = "percentage"
-        extractedData.earnDisplayText = `${percentage}% off`
-      }
-    }
-
-    // Extract dollar amounts
-    const dollarMatch = text.match(/\$(\d+(?:\.\d+)?)/i)
-    if (dollarMatch && !percentageMatch) {
-      const amount = Number.parseFloat(dollarMatch[1])
-      extractedData.earnAmount = amount.toString()
-      extractedData.earnType = "fixed"
-      extractedData.earnDisplayText = `$${amount} off`
-    }
-
-    // Extract points
-    const pointsMatch = text.match(/(\d+)\s+points?\s+per\s+dollar/i)
-    if (pointsMatch) {
-      extractedData.earnAmount = pointsMatch[1]
-      extractedData.earnType = "points"
-      extractedData.earnDisplayText = `${pointsMatch[1]} points per dollar`
-    }
-
-    // Extract dates
-    const datePatterns = [
-      /(?:between|from)\s+([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?)\s+(?:and|to)\s+([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?)/i,
-      /([A-Z][a-z]+\s+\d{1,2})\s+(?:to|through)\s+([A-Z][a-z]+\s+\d{1,2})/i,
-    ]
-
-    for (const pattern of datePatterns) {
-      const match = text.match(pattern)
-      if (match) {
-        const startDate = convertToISODate(match[1])
-        const endDate = convertToISODate(match[2])
-        if (startDate) extractedData.offerStartDate = startDate
-        if (endDate) extractedData.offerEndDate = endDate
-        break
-      }
-    }
-
-    // Extract expiry
-    const expiryMatch = text.match(/(?:available|expire[sd]?)\s+(?:for\s+)?(?:the\s+)?(?:next\s+)?(\d+)\s+days?/i)
-    if (expiryMatch) {
-      extractedData.simplePointExpiry = `Points expire ${expiryMatch[1]} days after earning`
-    }
-
-    // Extract rules
-    const rules: Record<string, string> = {}
-
-    // Member segments
-    if (text.includes("segment_house_owner")) {
-      rules["Customer Segment"] = "segment_house_owner"
-    }
-    if (text.includes("segment_Age_")) {
-      const ageMatch = text.match(/segment_(Age_\d+_\d+)/i)
-      if (ageMatch) {
-        rules["Customer Segment"] = `segment_${ageMatch[1]}`
-      }
-    }
-    if (text.includes("segment_fashion_lovers")) {
-      rules["Customer Segment"] = "segment_fashion_lovers"
-    }
-
-    // Member tiers
-    const tierMatch = text.match(/Member Tier as ([^.]+)/i)
-    if (tierMatch) {
-      rules["Membership Level Required"] = tierMatch[1].trim()
-    }
-
-    // Premium/VIP mentions
-    if (text.toLowerCase().includes("premium members")) {
-      rules["Membership Level Required"] = "Premium"
-    }
-    if (text.toLowerCase().includes("vip")) {
-      const vipMatch = text.match(/VIP\s+(\w+)/i)
-      if (vipMatch) {
-        rules["Membership Level Required"] = `VIP ${vipMatch[1]}`
-      } else {
-        rules["Membership Level Required"] = "VIP"
-      }
-    }
-
-    // Product restrictions
-    const productMatch = text.match(/(?:applicable\s+)?only\s+on\s+([^.]+)/i)
-    if (productMatch) {
-      rules["Eligible Products"] = productMatch[1].trim()
-    }
-
-    // Minimum purchase
-    const minPurchaseMatch = text.match(/minimum\s+purchase\s+\$(\d+)/i)
-    if (minPurchaseMatch) {
-      rules["Minimum Purchase"] = `$${minPurchaseMatch[1]}`
-    }
-
-    // Category inclusions
-    if (text.toLowerCase().includes("includes")) {
-      const includesMatch = text.match(/includes\s+([^.]+)/i)
-      if (includesMatch) {
-        rules["Included Categories"] = includesMatch[1].trim()
-      }
-    }
-
-    extractedData.offerRules = rules
-
-    console.log("🔍 ✅ Regex extraction complete:", extractedData)
-    return extractedData
-  }
-
-  const convertToISODate = (dateStr: string): string => {
-    try {
-      const currentYear = new Date().getFullYear()
-      const months: Record<string, string> = {
-        january: "01",
-        february: "02",
-        march: "03",
-        april: "04",
-        may: "05",
-        june: "06",
-        july: "07",
-        august: "08",
-        september: "09",
-        october: "10",
-        november: "11",
-        december: "12",
-      }
-
-      const match = dateStr.match(/([A-Z][a-z]+)\s+(\d{1,2})/i)
-      if (match) {
-        const monthName = match[1].toLowerCase()
-        const day = match[2].padStart(2, "0")
-        const monthNum = months[monthName]
-
-        if (monthNum) {
-          return `${currentYear}-${monthNum}-${day}`
-        }
-      }
-      return ""
-    } catch {
-      return ""
-    }
+    return result.data
   }
 
   const generateImage = async (offerData: any) => {
@@ -390,6 +201,9 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
         } else if (offerData.offerName?.toLowerCase().includes("electronics")) {
           gradient.addColorStop(0, "#7c3aed")
           gradient.addColorStop(1, "#5b21b6")
+        } else if (offerData.offerName?.toLowerCase().includes("fashion")) {
+          gradient.addColorStop(0, "#ec4899")
+          gradient.addColorStop(1, "#be185d")
         } else {
           gradient.addColorStop(0, "#059669")
           gradient.addColorStop(1, "#047857")
@@ -406,12 +220,40 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
         const brandName = offerData.offerName || "Special"
         ctx.fillText(brandName.substring(0, 10), 60, 30)
 
-        ctx.font = "bold 24px Arial"
-        const earnText = offerData.earnAmount ? `${offerData.earnAmount}%` : "DEAL"
-        ctx.fillText(earnText, 60, 60)
+        ctx.font = "bold 18px Arial"
+        let displayText = "DEAL"
+        let bottomText = ""
+
+        if (offerData.earnType === "percentage") {
+          displayText = `${offerData.earnAmount}%`
+          bottomText = "OFF"
+        } else if (offerData.earnType === "points") {
+          if (offerData.earnDisplayText?.includes("$")) {
+            displayText = offerData.earnDisplayText.split(" ")[0] // Just the $50 part
+            bottomText = "BACK"
+          } else if (
+            offerData.earnDisplayText?.includes("% back") ||
+            offerData.earnDisplayText?.includes("% cashback")
+          ) {
+            const percentage = offerData.earnDisplayText.match(/(\d+)%/)
+            displayText = percentage ? `${percentage[1]}%` : "POINTS"
+            bottomText = "BACK"
+          } else if (offerData.earnDisplayText?.includes("points per dollar")) {
+            displayText = offerData.earnAmount
+            bottomText = "PTS"
+          } else {
+            displayText = "POINTS"
+            bottomText = "BACK"
+          }
+        } else if (offerData.earnAmount) {
+          displayText = offerData.earnAmount
+          bottomText = "DEAL"
+        }
+
+        ctx.fillText(displayText, 60, 60)
 
         ctx.font = "12px Arial"
-        ctx.fillText("OFF", 60, 80)
+        ctx.fillText(bottomText, 60, 80)
 
         setStatus((prev) => ({ ...prev, canvas: "complete" }))
         return canvas.toDataURL()
@@ -441,12 +283,12 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
           addSystemMessage("✅ OpenAI extraction successful!")
         } catch (error) {
           addSystemMessage("⚠️ OpenAI failed, falling back to regex...")
-          extractedData = extractWithRegex(text)
+          extractedData = await extractWithRegex(text)
           addSystemMessage("✅ Regex extraction complete!")
         }
       } else {
         addSystemMessage("🔍 Using regex pattern matching...")
-        extractedData = extractWithRegex(text)
+        extractedData = await extractWithRegex(text)
         addSystemMessage("✅ Regex extraction complete!")
       }
 
@@ -458,13 +300,15 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
         addSystemMessage("✅ Image generated successfully!")
       }
 
-      // Show results
+      // Show results with detailed breakdown
       const resultMessage = `📊 **Extraction Complete!**
 
 ✅ **Offer Name:** ${extractedData.offerName || "Not found"}
 ✅ **Headline:** ${extractedData.offerHeadline || "Generated"}
 ✅ **Bodyline:** ${extractedData.offerBodyline || "Generated"}
-✅ **Reward:** ${extractedData.earnDisplayText || "Not found"}
+✅ **Reward Type:** ${extractedData.earnType}
+✅ **Earn Amount:** ${extractedData.earnAmount}
+✅ **Display Text:** ${extractedData.earnDisplayText || "Not found"}
 ✅ **Rules:** ${Object.keys(extractedData.offerRules || {}).length} conditions extracted
 ✅ **Image:** ${imageUrl ? "Generated" : "Not generated"}
 
@@ -533,7 +377,7 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-4xl max-h-[95vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center">
@@ -552,17 +396,18 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
           {/* Left Panel - Chat */}
           <div className="flex-1 flex flex-col min-h-0">
             {/* Status Bar */}
             <Card className="mb-4">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 sm:space-x-4">
                     <div className="flex items-center space-x-1">
                       {getStatusIcon("openai")}
-                      <span>OpenAI</span>
+                      <span className="hidden sm:inline">OpenAI</span>
+                      <span className="sm:hidden">AI</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       {getStatusIcon("regex")}
@@ -570,10 +415,11 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
                     </div>
                     <div className="flex items-center space-x-1">
                       {getStatusIcon("canvas")}
-                      <span>Smart Canvas</span>
+                      <span className="hidden sm:inline">Smart Canvas</span>
+                      <span className="sm:hidden">Canvas</span>
                     </div>
                   </div>
-                  <Badge variant={extractionMethod === "openai" ? "default" : "secondary"}>
+                  <Badge variant={extractionMethod === "openai" ? "default" : "secondary"} className="text-xs">
                     {extractionMethod === "openai" ? "AI Mode" : "Regex Mode"}
                   </Badge>
                 </div>
@@ -581,12 +427,12 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
             </Card>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 border rounded-lg p-4 mb-4">
+            <ScrollArea className="flex-1 border rounded-lg p-2 sm:p-4 mb-4">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
+                      className={`max-w-[85%] sm:max-w-[80%] rounded-lg p-2 sm:p-3 ${
                         message.type === "user"
                           ? "bg-blue-600 text-white"
                           : message.type === "system"
@@ -594,7 +440,7 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
                             : "bg-gray-50 text-gray-900"
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">{message.content}</div>
+                      <div className="whitespace-pre-wrap text-sm sm:text-base">{message.content}</div>
                       {message.type !== "system" && (
                         <div className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString()}</div>
                       )}
@@ -603,9 +449,9 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
                 ))}
                 {isProcessing && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-50 rounded-lg p-3 flex items-center space-x-2">
+                    <div className="bg-gray-50 rounded-lg p-2 sm:p-3 flex items-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Processing...</span>
+                      <span className="text-sm">Processing...</span>
                     </div>
                   </div>
                 )}
@@ -619,7 +465,7 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Describe your offer or paste offer text here..."
-                className="flex-1 min-h-[60px] max-h-[120px]"
+                className="flex-1 min-h-[60px] max-h-[120px] text-sm sm:text-base"
                 disabled={isProcessing || isClosing}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -631,7 +477,8 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
               <Button
                 onClick={handleSend}
                 disabled={!inputText.trim() || isProcessing || isClosing}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 px-3 sm:px-4"
+                size="sm"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -639,7 +486,7 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
           </div>
 
           {/* Right Panel - Test Prompts */}
-          <div className="w-80 flex flex-col">
+          <div className="w-full lg:w-80 flex flex-col">
             <Card className="flex-1">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center">
@@ -648,25 +495,27 @@ export default function ChatModal({ isOpen, onClose, onExtractData }: ChatModalP
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 space-y-3">
-                {testPrompts.map((test) => (
-                  <Card key={test.id} className="border border-gray-200">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">{test.title}</h4>
-                        <Button
-                          onClick={() => handleTestPrompt(test.prompt)}
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          disabled={isProcessing || isClosing}
-                        >
-                          Use
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-600 line-clamp-3">{test.prompt.substring(0, 100)}...</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+                  {testPrompts.map((test) => (
+                    <Card key={test.id} className="border border-gray-200">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-sm">{test.title}</h4>
+                          <Button
+                            onClick={() => handleTestPrompt(test.prompt)}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs px-2 py-1"
+                            disabled={isProcessing || isClosing}
+                          >
+                            Use
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-600 line-clamp-3">{test.prompt.substring(0, 100)}...</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -124,6 +124,28 @@ export default function SmartOfferFramework() {
     })
   }
 
+  // Helper function to get responsive font size for offer name
+  const getOfferNameFontSize = (name: string) => {
+    if (name.length > 25) return "text-xs"
+    if (name.length > 20) return "text-sm"
+    if (name.length > 15) return "text-base"
+    return "text-lg"
+  }
+
+  // Helper function to get points per dollar label
+  const getPointsPerDollarLabel = () => {
+    if (offerData.earnType === "points") {
+      // Show label for percentage-based points (back in points, cashback)
+      if (
+        offerData.earnDisplayText?.includes("% back in points") ||
+        offerData.earnDisplayText?.includes("% cashback")
+      ) {
+        return "points per dollar"
+      }
+    }
+    return ""
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -133,23 +155,31 @@ export default function SmartOfferFramework() {
             <div className="flex items-center space-x-3">
               <Logo />
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Smart Offer Framework
                 </h1>
-                <p className="text-sm text-gray-600">AI-Powered Offer Creation & Management</p>
+                <p className="text-xs sm:text-sm text-gray-600">AI-Powered Offer Creation & Management</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <Button
                 onClick={() => setIsChatOpen(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs sm:text-sm px-2 sm:px-4"
+                size="sm"
               >
-                <Brain className="w-4 h-4 mr-2" />
-                AI Offer Assistant
+                <Brain className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">AI Offer Assistant</span>
+                <span className="sm:hidden">AI</span>
               </Button>
-              <Button onClick={() => setIsJsonOpen(true)} variant="outline">
-                <FileText className="w-4 h-4 mr-2" />
-                View JSON
+              <Button
+                onClick={() => setIsJsonOpen(true)}
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm px-2 sm:px-4"
+              >
+                <FileText className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">View JSON</span>
+                <span className="sm:hidden">JSON</span>
               </Button>
             </div>
           </div>
@@ -157,33 +187,38 @@ export default function SmartOfferFramework() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Form Section */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Basic Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Tag className="w-5 h-5 mr-2 text-blue-600" />
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Tag className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-blue-600" />
                   Basic Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="offerName">Offer Name</Label>
+                    <Label htmlFor="offerName" className="text-sm">
+                      Offer Name
+                    </Label>
                     <Input
                       id="offerName"
                       value={offerData.offerName}
                       onChange={(e) => handleInputChange("offerName", e.target.value)}
                       placeholder="e.g., Kenmore Appliances"
+                      className="text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="earnType">Earn Type</Label>
+                    <Label htmlFor="earnType" className="text-sm">
+                      Earn Type
+                    </Label>
                     <Select value={offerData.earnType} onValueChange={(value) => handleInputChange("earnType", value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -197,23 +232,29 @@ export default function SmartOfferFramework() {
                 </div>
 
                 <div>
-                  <Label htmlFor="offerHeadline">Offer Headline</Label>
+                  <Label htmlFor="offerHeadline" className="text-sm">
+                    Offer Headline
+                  </Label>
                   <Input
                     id="offerHeadline"
                     value={offerData.offerHeadline}
                     onChange={(e) => handleInputChange("offerHeadline", e.target.value)}
                     placeholder="e.g., Appliance Deals & Rewards!"
+                    className="text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="offerBodyline">Offer Description</Label>
+                  <Label htmlFor="offerBodyline" className="text-sm">
+                    Offer Description
+                  </Label>
                   <Textarea
                     id="offerBodyline"
                     value={offerData.offerBodyline}
                     onChange={(e) => handleInputChange("offerBodyline", e.target.value)}
                     placeholder="e.g., Save on Kenmore appliances and earn rewards!"
                     rows={3}
+                    className="text-sm"
                   />
                 </div>
               </CardContent>
@@ -222,40 +263,52 @@ export default function SmartOfferFramework() {
             {/* Reward Details */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-green-600" />
                   Reward Details
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="earnAmount">Earn Amount</Label>
+                    <Label htmlFor="earnAmount" className="text-sm">
+                      Earn Amount
+                      {getPointsPerDollarLabel() && (
+                        <span className="text-xs text-gray-500 ml-1">({getPointsPerDollarLabel()})</span>
+                      )}
+                    </Label>
                     <Input
                       id="earnAmount"
                       value={offerData.earnAmount}
                       onChange={(e) => handleInputChange("earnAmount", e.target.value)}
                       placeholder="e.g., 15"
+                      className="text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="earnDisplayText">Display Text</Label>
+                    <Label htmlFor="earnDisplayText" className="text-sm">
+                      Display Text
+                    </Label>
                     <Input
                       id="earnDisplayText"
                       value={offerData.earnDisplayText}
                       onChange={(e) => handleInputChange("earnDisplayText", e.target.value)}
                       placeholder="e.g., 15% back in points"
+                      className="text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="simplePointExpiry">Point Expiry</Label>
+                  <Label htmlFor="simplePointExpiry" className="text-sm">
+                    Point Expiry
+                  </Label>
                   <Input
                     id="simplePointExpiry"
                     value={offerData.simplePointExpiry}
                     onChange={(e) => handleInputChange("simplePointExpiry", e.target.value)}
                     placeholder="e.g., Points expire 30 days after earning"
+                    className="text-sm"
                   />
                 </div>
               </CardContent>
@@ -264,29 +317,35 @@ export default function SmartOfferFramework() {
             {/* Date Range */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="w-5 h-5 mr-2 text-purple-600" />
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Calendar className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-purple-600" />
                   Offer Period
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="offerStartDate">Start Date</Label>
+                    <Label htmlFor="offerStartDate" className="text-sm">
+                      Start Date
+                    </Label>
                     <Input
                       id="offerStartDate"
                       type="date"
                       value={offerData.offerStartDate}
                       onChange={(e) => handleInputChange("offerStartDate", e.target.value)}
+                      className="text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="offerEndDate">End Date</Label>
+                    <Label htmlFor="offerEndDate" className="text-sm">
+                      End Date
+                    </Label>
                     <Input
                       id="offerEndDate"
                       type="date"
                       value={offerData.offerEndDate}
                       onChange={(e) => handleInputChange("offerEndDate", e.target.value)}
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -296,19 +355,22 @@ export default function SmartOfferFramework() {
             {/* Offer Rules */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-base sm:text-lg">
                   <div className="flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-orange-600" />
+                    <Users className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-orange-600" />
                     Offer Rules
                   </div>
-                  <Button onClick={addNewRule} size="sm" variant="outline">
+                  <Button onClick={addNewRule} size="sm" variant="outline" className="text-xs bg-transparent">
                     Add Rule
                   </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {Object.entries(offerData.offerRules).map(([key, value]) => (
-                  <div key={key} className="flex items-center space-x-2">
+                  <div
+                    key={key}
+                    className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2"
+                  >
                     <Input
                       value={key}
                       onChange={(e) => {
@@ -319,33 +381,40 @@ export default function SmartOfferFramework() {
                         setOfferData((prev) => ({ ...prev, offerRules: newRules }))
                       }}
                       placeholder="Rule name"
-                      className="flex-1"
+                      className="flex-1 text-sm"
                     />
                     <Input
                       value={value}
                       onChange={(e) => handleRuleChange(key, e.target.value)}
                       placeholder="Rule value"
-                      className="flex-1"
+                      className="flex-1 text-sm"
                     />
-                    <Button onClick={() => removeRule(key)} size="sm" variant="destructive">
+                    <Button
+                      onClick={() => removeRule(key)}
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs w-full sm:w-auto"
+                    >
                       Remove
                     </Button>
                   </div>
                 ))}
                 {Object.keys(offerData.offerRules).length === 0 && (
-                  <p className="text-gray-500 text-center py-4">No rules added yet. Click "Add Rule" to get started.</p>
+                  <p className="text-gray-500 text-center py-4 text-sm">
+                    No rules added yet. Click "Add Rule" to get started.
+                  </p>
                 )}
               </CardContent>
             </Card>
           </div>
 
           {/* Preview Section */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Offer Preview */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Sparkles className="w-5 h-5 mr-2 text-yellow-600" />
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Sparkles className="w-4 sm:w-5 h-4 sm:h-5 mr-2 text-yellow-600" />
                   Offer Preview
                 </CardTitle>
               </CardHeader>
@@ -356,23 +425,27 @@ export default function SmartOfferFramework() {
                       <img
                         src={offerData.offerImage || "/placeholder.svg"}
                         alt="Offer"
-                        className="w-32 h-32 object-cover rounded-lg border"
+                        className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg border"
                       />
                     </div>
                   )}
                   <div className="text-center space-y-2">
-                    <h3 className="font-bold text-lg">{offerData.offerHeadline || "Your Offer Headline"}</h3>
-                    <p className="text-gray-600">
+                    <h3
+                      className={`font-bold ${getOfferNameFontSize(offerData.offerHeadline || "Your Offer Headline")} leading-tight`}
+                    >
+                      {offerData.offerHeadline || "Your Offer Headline"}
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed break-words">
                       {offerData.offerBodyline || "Your offer description will appear here"}
                     </p>
                     {offerData.earnDisplayText && (
-                      <Badge className="bg-green-100 text-green-800 text-lg px-3 py-1">
+                      <Badge className="bg-green-100 text-green-800 text-sm sm:text-base px-2 sm:px-3 py-1">
                         {offerData.earnDisplayText}
                       </Badge>
                     )}
                   </div>
                   <Separator />
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-xs sm:text-sm">
                     {offerData.offerStartDate && offerData.offerEndDate && (
                       <p>
                         <strong>Valid:</strong> {offerData.offerStartDate} to {offerData.offerEndDate}
@@ -388,7 +461,7 @@ export default function SmartOfferFramework() {
                         <strong>Rules:</strong>
                         <ul className="list-disc list-inside mt-1 space-y-1">
                           {Object.entries(offerData.offerRules).map(([key, value]) => (
-                            <li key={key}>
+                            <li key={key} className="break-words">
                               {key}: {value}
                             </li>
                           ))}
@@ -403,20 +476,20 @@ export default function SmartOfferFramework() {
             {/* Actions */}
             <Card>
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button onClick={downloadJson} className="w-full bg-transparent" variant="outline">
+                <Button onClick={downloadJson} className="w-full bg-transparent text-sm" variant="outline">
                   <Download className="w-4 h-4 mr-2" />
                   Download JSON
                 </Button>
-                <Button onClick={() => setIsJsonOpen(true)} className="w-full" variant="outline">
+                <Button onClick={() => setIsJsonOpen(true)} className="w-full text-sm" variant="outline">
                   <FileText className="w-4 h-4 mr-2" />
                   View JSON Output
                 </Button>
                 <Button
                   onClick={() => setIsChatOpen(true)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm"
                 >
                   <Brain className="w-4 h-4 mr-2" />
                   Open AI Assistant
